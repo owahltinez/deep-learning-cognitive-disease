@@ -1,0 +1,177 @@
+<html>
+    <head>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            #marker {
+                position: absolute;
+                top: 0;
+                left: 0;
+                border: 3px solid red;
+            }
+        </style>
+    </head>
+
+    <body>
+
+        <img id="drawing" src="http://1x1px.me/FFFFFF-0.png"/>
+
+        <div>
+            <button id="convert" onclick="copyToClipboard(printOutput())">Convert</button>
+            <button id="reset" onclick="clearMarker()">Reset</button>
+            <button id="previous" onclick="prevDrawing()">Previous</button>
+            <button id="next" onclick="nextDrawing()">Next</button>
+            <span id="text">0x0</span>
+        </div>
+
+        <div id="marker"></div>
+
+        <!-- Load all the file names using an import -->
+        <script src="loadfiles.js"></script>
+
+        <script>
+            /** Current index in drawings list */
+            let idx = -1
+            /** Coordinates of markers for this drawing */
+            const coords = []
+            /** Coordinates of markers for all drawings */
+            const allCoords = fnames.map((name, idx) => {
+                const saved = localStorage.getItem(name)
+                if (saved) return saved.split(',')
+                else return null
+            })
+            /** HTML element for marker DIV */
+            const marker = document.querySelector('#marker')
+            /** HTML element for drawing IMG */
+            const img = document.querySelector('#drawing')
+            /** HTML element for debugging purposes */
+            const text = document.querySelector('#text')
+
+            /** Remove all markers and clear coordinates */
+            function clearMarker() {
+                coords.length = 0
+                marker.style.display = 'none'
+                marker.style.top = 0
+                marker.style.left = 0
+                marker.style.height = 0
+                marker.style.width = 0
+            }
+
+            /** Set next marker at the given X, Y position */
+            function setMarker(x, y) {
+                coords.push(x)
+                coords.push(y)
+                marker.style.display = 'block'
+                marker.style.top = Math.max(0, y - 2)
+                marker.style.left = Math.max(0, x - 2)
+                marker.style.height = 4
+                marker.style.width = 4
+            }
+
+            /** Save current markers into global scope */
+            function saveMarker(idx) {
+                // If markers were set, save them
+                if (coords.length === 2) {
+                    allCoords[idx] = coords.slice()
+                    localStorage.setItem(fnames[idx], coords.join(','))
+                    console.log(`Saved marker: (${idx})`,
+                                JSON.stringify(allCoords[idx]))
+                }
+            }
+
+            /** Copy string to clipboard */
+            const copyToClipboard = str => {
+                const el = document.createElement('textarea')
+                el.value = str
+                el.setAttribute('readonly', '')
+                el.style.position = 'absolute'
+                el.style.left = '-9999px'
+                document.body.appendChild(el)
+                el.select()
+                document.execCommand('copy')
+                document.body.removeChild(el)
+                alert('Text copied to clipboard')
+            }
+
+            /** Print output for all saved coordinates */
+            function printOutput() {
+                return allCoords
+                    .map((coords, idx) => coords ? `${fnames[idx]},${coords}` : null)
+                    .filter(coords => !!coords)
+                    .join('\n') + '\n'
+            }
+
+            /** Restore markers for current drawing */
+            function restoreMarker(idx) {
+                clearMarker()
+                if (allCoords[idx]) {
+                    setMarker(...allCoords[idx])
+                }
+            }
+
+            /** Move to next drawing */
+            function nextDrawing() {
+                // Save current markers
+                saveMarker(idx)
+                // Update index and image source
+                idx = idx + 1
+                idx = Math.min(idx, fnames.length - 1)
+                img.src = fnames[idx]
+                // Restore previous markers if any
+                restoreMarker(idx)
+            }
+
+            /** Move to previous drawing */
+            function prevDrawing() {
+                // Save current markers
+                saveMarker(idx)
+                // Update index and image source
+                idx = idx - 1
+                idx = Math.max(0, idx)
+                img.src = fnames[idx]
+                // Restore previous markers if any
+                restoreMarker(idx)
+            }
+
+            /** Drawing click listener */
+            img.addEventListener('click', event => {
+                return setMarker(event.clientX, event.clientY)
+            })
+
+            /** Drawing hover listener */
+            img.addEventListener('mousemove', event => {
+                text.innerText = `${event.clientX}x${event.clientY}`
+            })
+
+            /** Keyboard navigation listener */
+            document.onkeyup = event => {
+                event = event || window.event
+
+                if (event.keyCode == '27') {
+                    // Escape key
+                    return clearMarker()
+                }
+
+                if (event.keyCode == '32') {
+                    // Space key
+                    return nextDrawing()
+                }
+
+                if (event.keyCode == '37') {
+                    // Left arrow
+                    return prevDrawing()
+                }
+
+                if (event.keyCode == '39') {
+                    // Right arrow
+                    return nextDrawing()
+                }
+            }
+
+            /** Load first image */
+            nextDrawing()
+        </script>
+    </body>
+</html>
