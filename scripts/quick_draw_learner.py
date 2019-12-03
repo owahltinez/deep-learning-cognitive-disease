@@ -7,7 +7,7 @@ from coconuts.learners.base import BaseNNLearner, BaseNNRegressor, BaseNNClassif
 class BaseQD(BaseNNLearner, HighDimensionalMixin):
     ''' Network inspired by the architecture used in the "Quick, Draw!" paper '''
 
-    def __init__(self, kernel_size: int = 16,
+    def __init__(self, kernel_size: int = 5,
                  learning_rate: float = .001, loss_function: LossFunction = None,
                  random_seed: int = 0, verbose: bool = False, **kwargs):
         super().__init__(learning_rate=learning_rate, loss_function=loss_function,
