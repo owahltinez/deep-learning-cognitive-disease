@@ -143,3 +143,29 @@ class ImageAugmenterMultiLoader(ImageAugmenterLoader):
         imgs = [img.reshape(*img.shape[1:]) if img.shape[0] == 1 else img for img in imgs]
         # Join all images into a single array
         return numpy.array(imgs)
+
+class NpyLoader:
+    ''' Load npy files from a list of paths '''
+    def __init__(self, arr: List[str]):
+        self.arr = arr
+
+    def __len__(self):
+        return len(self.arr)
+
+    def load(self, npypath: str):
+        # https://github.com/numpy/numpy/issues/12847
+        npy = numpy.load(npypath, mmap_mode='r')
+        data = npy[:]
+        del npy
+        return data
+
+    def __getitem__(self, idx):
+        return self.load(self.arr[idx])
+
+class NpyMultiLoader(NpyLoader):
+    ''' Loads npy files from input array containing a list of paths for each datapoint '''
+
+    def __getitem__(self, idx):
+        npys = [self.load(npypath) for npypath in self.arr[idx]]
+        #npys = [npy.reshape(*npy.shape[1:]) for npy in npys]
+        return numpy.array(npys)
