@@ -1,10 +1,11 @@
-from matplotlib import pyplot as plt
 from pathlib import Path
+from collections import OrderedDict
 from typing import Dict, List, Tuple
 
 import numpy
 import pandas
 import skimage.transform
+from matplotlib import pyplot as plt
 from bananas.dataset import Feature, DataSet
 from bananas.sampling import RandomSampler
 from bananas.utils import images
@@ -58,10 +59,17 @@ def split_datasets(df: pandas.DataFrame, test_size: int,
 class ImageLoader:
     ''' Load images from a list of paths '''
     
-    def __init__(self, arr: List[str], cache: bool = False, resize: Tuple[int] = None, normalize: bool = False, **img_opts):
+    def __init__(
+        self,
+        arr: List[str],
+        cache: int = 0,
+        resize: Tuple[int] = None,
+        normalize: bool = False,
+        **img_opts):
         self.arr = arr
-        self._cache = {}
-        self._cache_flag = cache
+        self._cache = OrderedDict()
+        self._cache_size = cache
+        self._cache_flag = cache > 0
         self._resize = resize
         self._normalize = normalize
         self._img_opts = img_opts
@@ -69,13 +77,19 @@ class ImageLoader:
     def load(self, impath: str, process: bool = True):
 
         # Load & save image from cache if option is enabled
-        img = self._cache.get(impath, images.open_image(impath, channels=True, **self._img_opts))
-        if self._cache_flag: self._cache[impath] = img
+        img = self._cache.get(
+            impath, images.open_image(impath, channels=True, **self._img_opts))
+        if self._cache_flag and impath not in self._cache:
+          self._cache[impath] = img
+          if len(self._cache) > self._cache_size:
+              self._cache.popitem(last=False)
             
         # Resize image if requested
         if self._resize is not None:
             img = skimage.transform.resize(
-                img.astype(float), self._resize, mode='constant').astype(img.dtype)
+                img.astype(float),
+                self._resize,
+                mode='constant').astype(img.dtype)
             
         # Normalize image if requested
         if process and self._normalize and not self._img_opts.get('uint8'):
@@ -93,8 +107,15 @@ class ImageLoader:
 class ImageAugmenterLoader(ImageLoader):
     ''' Load an image given its path and augment it using random transformations '''
     
-    def __init__(self, arr: List, cache: bool = False, resize: Tuple[int] = None, normalize: bool = False, **img_opts):
-        super().__init__(arr, cache=cache, resize=resize, normalize=normalize, uint8=True, **img_opts)
+    def __init__(
+        self,
+        arr: List,
+        cache: int = 0,
+        resize: Tuple[int] = None,
+        normalize: bool = False,
+        **img_opts):
+        super().__init__(
+          arr, cache=cache, resize=resize, normalize=normalize, uint8=True, **img_opts)
         self._augmenter = augmenters.Sequential([
             augmenters.Crop(percent=(0, .1)),
             augmenters.Sometimes(.5, augmenters.GaussianBlur(sigma = (0, .5))),
@@ -108,7 +129,7 @@ class ImageAugmenterLoader(ImageLoader):
         ], random_order = True)
         
     def _augment(self, img):
-        assert img.ndim == 3, 'Image must have a color channel. Dimensions: %d' % img.ndim
+        assert img.ndim == 3, 'Color channel required. Dimensions: %d' % img.ndim
         img = numpy.moveaxis(img, 0, -1)
         img = self._augmenter.augment_image(img)
         img = numpy.moveaxis(img, -1, 0)
@@ -140,7 +161,8 @@ class ImageAugmenterMultiLoader(ImageAugmenterLoader):
         # Augment each image independently
         imgs = [self._augment(img) for img in imgs]
         # Remove the grayscale color channel
-        imgs = [img.reshape(*img.shape[1:]) if img.shape[0] == 1 else img for img in imgs]
+        imgs = [img.reshape(*img.shape[1:]) if img.shape[0] == 1 else img
+                for img in imgs]
         # Join all images into a single array
         return numpy.array(imgs)
 
