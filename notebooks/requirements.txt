@@ -1,0 +1,3 @@
+git+https://github.com/owahltinez/bananas
+git+https://github.com/owahltinez/coconuts
+imgaug==0.4.0
