@@ -12,20 +12,20 @@ from bananas.utils import images
 
 import imgaug
 from imgaug import augmenters
-
 from torchvision import transforms
-
 from datamodels import Template
+
 
 # Valid extensions for image files
 IMG_EXTENSIONS = ('.jpg', '.png')
+
 
 def imshow(img: numpy.ndarray):
     ''' Utility function used to display image ''' 
     plt.figure(figsize=(10, 10))
     plt.imshow(img, cmap='gray')
 
-# Load image template utility function
+    
 def tpl_load(tpl_path: Path) -> Template:
     ''' Load image template given its path '''
     name = tpl_path.name.split('.')[0]
@@ -38,9 +38,11 @@ def tpl_load(tpl_path: Path) -> Template:
         width=tpl_width,
         height=tpl_height)
 
+
 def tpl_load_all(tpl_folder: Path) -> List[Template]:
     ''' Load all templates given a folder containing their images '''
     return [tpl_load(f) for f in tpl_folder.iterdir() if f.suffix in IMG_EXTENSIONS]
+
 
 def split_datasets(df: pandas.DataFrame, test_size: int,
                    target_col: str = 'diagnosis', random_seed: int = 0) -> \
@@ -55,6 +57,7 @@ def split_datasets(df: pandas.DataFrame, test_size: int,
 
     # Create and return the corresponding dataframes
     return df.loc[train_keys], df.loc[test_keys]
+
 
 class ImageLoader:
     ''' Load images from a list of paths '''
@@ -103,7 +106,8 @@ class ImageLoader:
 
     def __getitem__(self, idx):
         return self.load(self.arr[idx])
-        
+
+
 class ImageAugmenterLoader(ImageLoader):
     ''' Load an image given its path and augment it using random transformations '''
     
@@ -144,6 +148,7 @@ class ImageAugmenterLoader(ImageLoader):
         img = self.load(self.arr[idx], process=False)
         return self._augment(img)
 
+
 class ImageMultiLoader(ImageLoader):
     ''' Loads images from input array containing a list of images for each datapoint '''
     
@@ -151,6 +156,7 @@ class ImageMultiLoader(ImageLoader):
         imgs = [self.load(impath) for impath in self.arr[idx]]
         imgs = [img.reshape(*img.shape[1:]) for img in imgs]
         return numpy.array(imgs)
+
 
 class ImageAugmenterMultiLoader(ImageAugmenterLoader):
     ''' Same as ImageMultiLoader but with image augmentation '''
@@ -165,6 +171,7 @@ class ImageAugmenterMultiLoader(ImageAugmenterLoader):
                 for img in imgs]
         # Join all images into a single array
         return numpy.array(imgs)
+
 
 class NpyLoader:
     ''' Load npy files from a list of paths '''
@@ -183,6 +190,7 @@ class NpyLoader:
 
     def __getitem__(self, idx):
         return self.load(self.arr[idx])
+
 
 class NpyMultiLoader(NpyLoader):
     ''' Loads npy files from input array containing a list of paths for each datapoint '''
